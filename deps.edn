@@ -1,0 +1,10 @@
+{:paths ["src"]
+
+ :deps {org.clojure/clojure   {:mvn/version "1.10.3"}
+        org.clojure/tools.cli {:mvn/version "1.0.206"}}
+
+ :aliases
+ {:kaocha-runner {:extra-deps {lambdaisland/kaocha {:mvn/version "1.0.887"}}}
+
+  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.3" :git/sha "4a1b53a"}}
+          :ns-default build}}}

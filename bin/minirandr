@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd "$(dirname "$0")"
+
+bb --classpath ../src --main com.safehammad.minirandr -- $@
