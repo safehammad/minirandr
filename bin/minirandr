@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script requires the Babashka `bb` binary.
+# See Babashka installation instructions: https://github.com/babashka/babashka#installation
+
 cd "$(dirname "$0")"
 
 bb --classpath ../src --main com.safehammad.minirandr -- $@

@@ -2,19 +2,40 @@
 
 Minirandr is a very simple command line interface to `xrandr` for configuring screens when all you care about is which screens to connect, and how they're arranged. All screens will be connected at native resolution in standard orientation.
 
+## Quick start
+
+1. Grab a binary from [Github Releases](https://github.com/safehammad/minirandr/releases) and place it anywhere on your `PATH`.
+
+2. Run `minirandr` to list connected screens. For example:
+
+    $ minirandr
+    0: eDP1 1920x1080
+    1: DP1 1920x1200
+    2: HDMI2 2560x1080
+
+3. Configure your screens left to right. For example, to configure screen 1 on the left, screen 0 to the right of that as primary screen, and screen 2 to the right of that, run:
+
+    $ minirandr 1 0p 2
+
 ## Installation
 
 This software relies on the [xrandr](https://www.x.org/releases/X11R7.5/doc/man/man1/xrandr.1.html) command to configure screens. The command is installed by default on most Linux distros, and can be installed on Mac (though I've not tested this). I'm not aware of a Windows port of `xrandr`.
 
-### Option 1: Babashka Script
+https://github.com/babashka/babashka/releases
+
+### Option 1: Download binary
+
+Grab a binary from [Github Releases](https://github.com/safehammad/minirandr/releases) and place it anywhere on your `PATH`.
+
+### Option 2: Run as Babashka script
 
 This application is written as a Clojure script which can be run from the shell using [Babashka](https://babashka.org/). Install instructions for Babashka can be found at https://github.com/babashka/babashka#installation.
 
-Then simply run the provided `minirandr` shell script in the `bin` directory. For convenience, you can add the `bin` directory to your PATH.
+Then simply run the provided shell script `./bin/minirandr`. For convenience, you can add the `bin` directory to your `PATH`.
 
-### Option 2: Native Executable
+### Option 3: Build native Executable
 
-A native executable for your platform can be built using [GraalVM](https://www.graalvm.org/) as follows:
+You can build a native executable for your own platform using [GraalVM](https://www.graalvm.org/) as follows:
 
 1. Install Clojure -- the [Getting Started Guide](https://clojure.org/guides/getting_started) will get you up and running quickly.
 
@@ -32,7 +53,7 @@ c) Run:
 
     $ clj -T:build native-image
 
-This will create the standalone execuatable `minirandr` the `target` directory.
+This will create the standalone executable `minirandr` the `target` directory.
 
 ## Usage
 
