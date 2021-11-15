@@ -7,15 +7,16 @@ Minirandr is a very simple command line interface to `xrandr` for configuring sc
 1. Grab a binary from [Github Releases](https://github.com/safehammad/minirandr/releases) and place it anywhere on your `PATH`.
 
 2. Run `minirandr` to list connected screens. For example:
-
+```
     $ minirandr
     0: eDP1 1920x1080
     1: DP1 1920x1200
     2: HDMI2 2560x1080
+```
 
 3. Configure your screens left to right. For example, to configure screen 1 on the left, screen 0 to the right of that as primary screen, and screen 2 to the right of that, run:
 
-    $ minirandr 1 0p 2
+    `$ minirandr 1 0p 2`
 
 ## Installation
 
