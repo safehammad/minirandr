@@ -58,6 +58,8 @@ This will create the standalone executable `minirandr` the `target` directory.
 
 ## Usage
 
+### Basic usage
+
 First, call `minirandr -l` to list connected screens. Calling `minirandr` without arguments does the same thing. Each screen is listed alongside a numeric index (0, 1, 2 etc...) and its native resolution. For example:
 
     $ minirandr
@@ -82,10 +84,31 @@ Any screen indexes missing from the command will switch that screen off. In our 
     $ minirandr 1 2p
     xrandr --output DP1 --auto --output HDMI2 --auto --primary --right-of DP1 --output eDP1 --off
 
-You can quickly configure screen 0 as the single primary screen. This is especially useful when you know you only have a single screen, for example, when disconnecting your laptop from all external screens. Run:
+### Single screen
+
+To configure a screen as the single screen. Run:
+
+    $ minirandr -s 1p
+    xrandr --output DP1 --auto --primary ---output eDP1 --off --output HDMI2 -off
+
+You can also quickly configure screen 0 as the single primary screen. This is especially useful when you know you only have a single screen, for example, after disconnecting your laptop from all external screens, run:
 
     $ minirandr -s
     xrandr --output eDP1 --auto --primary ---output DP1 --off --output HDMI2 -off
+
+### Mirror screens
+
+To mirror screens, for example screens 0 and 1 with 1 as primary while maintaining their native resolution and setting, run:
+
+    $ minirandr -m 0 2p
+    xrandr --output eDP1 --auto --output HDMI2 --auto --primary --same-as eDP1 --output DP1 --off
+
+And as a quick shortcut, to mirror all screens while setting screen 0 as primary, run:
+
+    $ minirandr -m
+    xrandr --output eDP1 --auto --primary --output DP1 --auto --same-as eDP1 --output HDMI2 --auto --same-as DP1
+
+### Help
 
 Finally, to see the help, run:
 

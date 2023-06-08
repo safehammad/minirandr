@@ -6,7 +6,7 @@
 
   (:gen-class))
 
-(def version-string "0.1.1")
+(def version-string "0.2.0")
 
 (defn ->screen
   "Create screen entity."
@@ -84,12 +84,11 @@ VIRTUAL1 disconnected (normal left inverted right x axis y axis)"))
 (defn make-screen-choice
   "Given command line args, return set of screen-indexes chosen in order, together with whether they're primary.
   For example: 2p 0 = ({:screen-index \"2\" :primary true} {:screen-index \"0\" :primary false})"
-  [args]
-  (map
-    #(hash-map :screen-index (Integer/parseInt (subs % 0 1))
-               :primary (= (str/lower-case (subs % 1)) "p")
+  [screen-specs]
+  (map #(hash-map :screen-index (parse-long (subs % 0 1))
+               :primary (str/ends-with? % "p")
                :off false)
-    args))
+       screen-specs))
 
 (defn make-off-screens
   "Given a map of screens and the choice of screens to turn on, return a map of screens to switch off."
@@ -105,49 +104,60 @@ VIRTUAL1 disconnected (normal left inverted right x axis y axis)"))
 
 (defn extend-command
   "Extend the xrandr command with the given screen config."
-  [cmd screen off primary previous-screen]
+  [cmd screen off primary previous-screen mirror-screens?]
   (let [cmd (conj cmd "--output" screen)]
     (if off
       (conj cmd "--off")
       (cond-> (conj cmd "--auto" )
         primary         (conj "--primary")
-        previous-screen (conj "--right-of" previous-screen)))))
+        previous-screen (conj (if mirror-screens? "--same-as" "--right-of") previous-screen)))))
 
 (defn format-xrandr-cmd
   "Create the xrandr command to execute as a vector of strings."
-  [screen-map screen-choice off-screens]
+  [screen-map screen-choice off-screens mirror-screens?]
   (loop [cmd             ["xrandr"]
          screen-config   (concat screen-choice off-screens)
          previous-screen nil]
     (if (seq screen-config)
       (let [{:keys [screen-index primary off]} (first screen-config)
             {:keys [screen]}                   (get screen-map screen-index)
-            cmd                                (extend-command cmd screen off primary previous-screen)]
+            cmd                                (extend-command cmd screen off primary previous-screen mirror-screens?)]
         (recur cmd (rest screen-config) screen))
       cmd)))
 
 (defn run-xrandr!
   "Format and run the xrandr command."
-  [screen-map args]
-  (let [screen-choice (make-screen-choice args)
+  [screen-map screen-specs mirror-screens?]
+  (let [screen-choice (make-screen-choice screen-specs)
         off-screens   (make-off-screens screen-map screen-choice)
-        cmd           (format-xrandr-cmd screen-map screen-choice off-screens)
+        cmd           (format-xrandr-cmd screen-map screen-choice off-screens mirror-screens?)
         result        (apply shell/sh cmd)]
     (str (str/join " " cmd) "\n" (:err result))))
 
-(map (comp second (partial re-matches #"(\d+)p?")) (str/split (str/trim "x 2p") #"\s+" ))
-
 (defn connected-screen-indexes
-  "Return a set of indexes of connected screens as strings."
+  "Return the indexes of connected screens as strings."
   [screen-map]
-  (set (->> screen-map
-            (filter (comp :connected val))
-            (map (comp str key)))))
+  (->> screen-map
+       (filter (comp :connected val))
+       (map (comp str key))))
+
+(defn make-screen-specs
+  "Given information provided on command line, create screen specs."
+  [single-screen? mirror-screens? screen-map arguments]
+  (cond
+    single-screen?  (if (seq arguments)
+                      (subvec arguments 0 1)
+                      ["0p"])
+    mirror-screens? (if (seq arguments)
+                      arguments
+                      (let [[spec & specs] (connected-screen-indexes screen-map)]
+                        (apply vector (str spec "p") specs)))
+    :else            arguments))
 
 (defn valid-args?
   "Ensure indexes parsed as args correspond to connected screens."
   [screen-map args]
-  (let [connected-indexes (connected-screen-indexes screen-map)
+  (let [connected-indexes (set (connected-screen-indexes screen-map))
         parsed-args       (map (comp second (partial re-matches #"(\d+)p?")) args)]
     (and
       (seq parsed-args)
@@ -176,13 +186,26 @@ To configure screens, provide screen specs as indexes in the order that they are
 
     $ minirandr 1 0p
 
+To configure screen 2 as the single primary screen, run:
+
+    $ minirandr -s 2p
+
 To quickly configure screen 0 as the single primary screen, run:
 
-    $ minirandr -s")
+    $ minirandr -s
+
+To mirror screens 0 and 1 with 1 as primary while maintaining their native resolution and setting, run:
+
+    $ minirandr -m 0 1p
+
+To mirror all secreen setting screen 0 as primary while maintaining their native resolution and setting, run:
+
+    $ minirandr -m")
 
 (def cli-opts
   [["-l" "--list-screens" "List connected screens"]
-   ["-s" "--single-screen" "Configure first screen listed as the only screen and set as primary"]
+   ["-s" "--single-screen" "Configure as only screen; if no screen specs provided, choose first connected screen and set as primary"]
+   ["-m" "--mirror-screens" "Mirror screens; if no screen specs provided, mirror all connected screens and set first as primary"]
    ["-v" "--version" "Display version"]
    ["-h" "--help" "Display help"]])
 
@@ -191,23 +214,23 @@ To quickly configure screen 0 as the single primary screen, run:
   [args]
   (let [parsed-opts                                (cli/parse-opts args cli-opts)
         {:keys [options arguments errors summary]} parsed-opts
-        {:keys [list-screens single-screen version help]}  options
-        list-screens                               (or list-screens (every? empty? [options arguments]))
-        screen-map                                 (screen-map!)]
+        {:keys [list-screens single-screen
+                mirror-screens version help]}      options
+        screen-map                                 (screen-map!)
+        screen-specs                               (make-screen-specs single-screen mirror-screens screen-map arguments)
+        list-screens                               (or list-screens (every? empty? [options screen-specs]))]
     (cond
-      errors                              (str/join "\n" errors)
-      help                                (str/join "\n\n" [usage summary instructions])
-      version                             (str "minirandr v" version-string)
-      list-screens                        (print-screens screen-map)
-      single-screen                       (run-xrandr! screen-map ["0p"])
-      (not (valid-args? screen-map args)) (str "Invalid screen specs. "
-                                               "The following screens are available:\n\n"
-                                               (print-screens screen-map)
-                                               "\n\nPlease run `minirandr --help` for more information.")
-      :else                               (run-xrandr! screen-map arguments))))
+      errors                                      (str/join "\n" errors)
+      help                                        (str/join "\n\n" [usage summary instructions])
+      version                                     (str "minirandr v" version-string)
+      list-screens                                (print-screens screen-map)
+      (not (valid-args? screen-map screen-specs)) (str "Invalid screen specs. "
+                                                    "The following screens are available:\n\n"
+                                                    (print-screens screen-map)
+                                                    "\n\nPlease run `minirandr --help` for more information.")
+      :else                                       (run-xrandr! screen-map screen-specs mirror-screens))))
 
 (defn -main
   [& args]
-  ;(println (screen-map!))
   (println (main! args))
   (System/exit 0))

@@ -50,15 +50,13 @@
                         4 {:screen "HDMI1", :connected false, :resolution nil},
                         5 {:screen "VIRTUAL1", :connected false, :resolution nil}})
 
-(def sample-screen-choice [{:primary false, :screen-index 0} {:primary true, :screen-index 1}])  ; Args: 0 1p
+(def sample-screen-choice [{:primary false, :screen-index 0, :off false}   ; screen-spec 0 1p
+                           {:primary true, :screen-index 1, :off false}])
 
-(def sample-off-screens [{:screen-index 2, :off true}  ; Args: 0 1p
-                         {:screen-index 3, :off true}
-                         {:screen-index 4, :off true}
-                         {:screen-index 5, :off true}])
-
-(def sample-xrandr-cmd
-  "xrandr --output eDP1 --auto --output HDMI2 --auto --primary --right-of eDP1 --output DP1 --off --output DP2 --off --output HDMI1 --off --output VIRTUAL1 --off")
+(def sample-off-screens [{:screen-index 2, :off true, :primary false}  ; screen-spec 0 1p
+                         {:screen-index 3, :off true, :primary false}
+                         {:screen-index 4, :off true, :primary false}
+                         {:screen-index 5, :off true, :primary false}])
 
 (deftest parse-xrandr-test
   (is (= sample-screen-map (minirandr/parse-xrandr sample-xrandr-output))))
@@ -68,8 +66,7 @@
     (are [args] (minirandr/valid-args? sample-screen-map args)
          ["0"]     ; connected index
          ["1"]     ; another connected index
-         ["0p"]    ; set as primary
-         ))
+         ["0p"]))  ; set as primary
   (testing "Invalid args"
     (are [args] (not (minirandr/valid-args? sample-screen-map args))
          []        ; args must exist - we won't switch off all screens!
@@ -88,4 +85,6 @@
   (is (= sample-off-screens (minirandr/make-off-screens sample-screen-map sample-screen-choice))))
 
 (deftest format-xrandr-cmd-test
-  (is (= sample-xrandr-cmd (str/join " " (minirandr/format-xrandr-cmd sample-screen-map sample-screen-choice sample-off-screens)))))
+  (are [mirror-screens? cmd] (= (str/join " " (minirandr/format-xrandr-cmd sample-screen-map sample-screen-choice sample-off-screens mirror-screens?)) cmd)
+       false "xrandr --output eDP1 --auto --output HDMI2 --auto --primary --right-of eDP1 --output DP1 --off --output DP2 --off --output HDMI1 --off --output VIRTUAL1 --off"
+       true  "xrandr --output eDP1 --auto --output HDMI2 --auto --primary --same-as eDP1 --output DP1 --off --output DP2 --off --output HDMI1 --off --output VIRTUAL1 --off"))
